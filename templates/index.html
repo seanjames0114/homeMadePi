@@ -10,226 +10,518 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <header class="header">
-        <div class="logo">
-            <i class="fas fa-raspberry-pi"></i>
-            <span>HomeMade Pi</span>
-        </div>
-        <div class="clock-display">
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <i class="fas fa-raspberry-pi"></i>
+        <span class="brand-text">HomeMade Pi</span>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a class="nav-link active" data-page="overview">
+            <i class="fas fa-gauge-high"></i><span>Overview</span>
+        </a>
+        <a class="nav-link" data-page="media">
+            <i class="fas fa-music"></i><span>Media</span>
+        </a>
+        <a class="nav-link" data-page="smarthome">
+            <i class="fas fa-lightbulb"></i><span>Smart Home</span>
+        </a>
+        <a class="nav-link" data-page="network">
+            <i class="fas fa-network-wired"></i><span>Network</span>
+        </a>
+        <a class="nav-link" data-page="planner">
+            <i class="fas fa-calendar-days"></i><span>Planner</span>
+        </a>
+        <a class="nav-link" data-page="gear">
+            <i class="fas fa-bag-shopping"></i><span>Gear Guide</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <button class="collapse-btn" id="collapse-btn" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-left" id="collapse-icon"></i>
+        </button>
+    </div>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────────────────────────── -->
+<div class="main" id="main">
+
+    <!-- Top bar -->
+    <header class="topbar">
+        <div class="topbar-title" id="page-title">Overview</div>
+        <div class="topbar-clock">
             <div class="time" id="clock">00:00:00</div>
-            <div class="date" id="date">Loading...</div>
+            <div class="date" id="date">—</div>
         </div>
-        <div class="status-indicator">
-            <i class="fas fa-circle"></i>
-            <span>Online</span>
+        <div class="topbar-right">
+            <div class="quick-stat" id="qs-cpu">
+                <i class="fas fa-microchip"></i><span id="qs-cpu-val">—</span>
+            </div>
+            <div class="quick-stat" id="qs-temp">
+                <i class="fas fa-temperature-half"></i><span id="qs-temp-val">—</span>
+            </div>
+            <div class="status-dot"><i class="fas fa-circle"></i></div>
         </div>
     </header>
 
-    <main class="dashboard">
-
-        <!-- Spotify -->
-        <div class="card card-spotify">
-            <div class="card-header">
-                <i class="fab fa-spotify"></i>
-                <span>Spotify</span>
-                <div class="spotify-device-label" id="spotify-device"></div>
-            </div>
-
-            <div class="spotify-auth" id="spotify-auth">
-                <div class="auth-icon"><i class="fab fa-spotify"></i></div>
-                <p>Control your Spotify playback</p>
-                {% if spotify_client_id %}
-                <a href="/api/spotify/auth" class="btn btn-spotify">
-                    <i class="fab fa-spotify"></i> Connect Spotify
-                </a>
-                {% else %}
-                <p class="hint">Add <code>SPOTIFY_CLIENT_ID</code> to .env</p>
-                {% endif %}
-                <p class="hint">Requires Spotify Premium</p>
+    <!-- ══ PAGE: Overview ══════════════════════════════════════════════════ -->
+    <section class="page active" id="page-overview">
+        <div class="grid grid-3">
+            <!-- Weather -->
+            <div class="card card-weather">
+                <div class="card-header">
+                    <i class="fas fa-cloud-sun" style="color:#d97706"></i>
+                    <span>Weather</span>
+                    <button class="hdr-btn" onclick="requestLocation()"><i class="fas fa-location-crosshairs"></i></button>
+                </div>
+                <div id="weather-content">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Fetching…</span></div>
+                </div>
             </div>
 
-            <div class="spotify-player" id="spotify-player" style="display:none">
-                <div class="album-art-wrap">
-                    <img id="album-art" class="album-art" src="" alt="Album Art">
-                    <div id="album-placeholder" class="album-placeholder"><i class="fas fa-music"></i></div>
+            <!-- System -->
+            <div class="card card-system">
+                <div class="card-header">
+                    <i class="fas fa-microchip" style="color:#7c3aed"></i>
+                    <span>System</span>
+                    <span class="badge" style="background:rgba(124,58,237,.18);color:#7c3aed">Pi</span>
                 </div>
-                <div class="track-info">
-                    <div class="track-name" id="track-name">Not Playing</div>
-                    <div class="track-artist" id="track-artist">—</div>
-                    <div class="track-album" id="track-album">—</div>
+                <div class="gauges-grid">
+                    <div class="gauge-wrap">
+                        <svg viewBox="0 0 100 60" class="gauge-svg"><path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/><path id="g-cpu" d="M10 55 A40 40 0 0 1 90 55" stroke="#7c3aed" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/></svg>
+                        <div class="gauge-label">CPU</div><div class="gauge-val" id="v-cpu">0%</div>
+                    </div>
+                    <div class="gauge-wrap">
+                        <svg viewBox="0 0 100 60" class="gauge-svg"><path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/><path id="g-ram" d="M10 55 A40 40 0 0 1 90 55" stroke="#2563eb" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/></svg>
+                        <div class="gauge-label">RAM</div><div class="gauge-val" id="v-ram">0%</div>
+                    </div>
+                    <div class="gauge-wrap">
+                        <svg viewBox="0 0 100 60" class="gauge-svg"><path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/><path id="g-disk" d="M10 55 A40 40 0 0 1 90 55" stroke="#059669" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/></svg>
+                        <div class="gauge-label">Disk</div><div class="gauge-val" id="v-disk">0%</div>
+                    </div>
+                    <div class="gauge-wrap">
+                        <svg viewBox="0 0 100 60" class="gauge-svg"><path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/><path id="g-temp" d="M10 55 A40 40 0 0 1 90 55" stroke="#dc2626" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/></svg>
+                        <div class="gauge-label">Temp</div><div class="gauge-val" id="v-temp">—</div>
+                    </div>
                 </div>
-                <div class="progress-row">
-                    <span id="prog-current">0:00</span>
-                    <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
-                    <span id="prog-total">0:00</span>
-                </div>
-                <div class="controls">
-                    <button class="ctrl-btn" id="btn-shuffle" onclick="spotifyAction('shuffle')" title="Shuffle"><i class="fas fa-shuffle"></i></button>
-                    <button class="ctrl-btn" onclick="spotifyAction('previous')" title="Previous"><i class="fas fa-backward-step"></i></button>
-                    <button class="ctrl-btn play-btn" id="btn-play" onclick="spotifyAction('playpause')" title="Play/Pause"><i class="fas fa-play" id="play-icon"></i></button>
-                    <button class="ctrl-btn" onclick="spotifyAction('next')" title="Next"><i class="fas fa-forward-step"></i></button>
-                    <button class="ctrl-btn" id="btn-repeat" onclick="spotifyAction('repeat')" title="Repeat"><i class="fas fa-repeat"></i></button>
-                </div>
-                <div class="volume-row">
-                    <i class="fas fa-volume-low"></i>
-                    <input type="range" id="vol-slider" class="vol-slider" min="0" max="100" value="50" oninput="setVolume(this.value)">
-                    <i class="fas fa-volume-high"></i>
-                    <span class="vol-value" id="vol-value">50%</span>
+                <div class="sys-details">
+                    <div class="sys-row"><span>Memory</span><span id="v-ram-detail">—</span></div>
+                    <div class="sys-row"><span>Disk</span><span id="v-disk-detail">—</span></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Weather -->
-        <div class="card card-weather">
-            <div class="card-header">
-                <i class="fas fa-cloud-sun"></i>
-                <span>Weather</span>
-                <button class="hdr-btn" onclick="requestLocation()" title="Refresh location"><i class="fas fa-location-crosshairs"></i></button>
-            </div>
-            <div id="weather-content">
-                <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Fetching weather…</span></div>
-            </div>
-        </div>
-
-        <!-- System Stats -->
-        <div class="card card-system">
-            <div class="card-header">
-                <i class="fas fa-microchip"></i>
-                <span>System</span>
-                <span class="badge-pi">Pi</span>
-            </div>
-            <div class="gauges-grid">
-                <div class="gauge-wrap">
-                    <svg viewBox="0 0 100 60" class="gauge-svg">
-                        <path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/>
-                        <path id="g-cpu" d="M10 55 A40 40 0 0 1 90 55" stroke="#7c3aed" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/>
-                    </svg>
-                    <div class="gauge-label">CPU</div>
-                    <div class="gauge-val" id="v-cpu">0%</div>
+            <!-- Pi-hole -->
+            <div class="card card-pihole">
+                <div class="card-header">
+                    <i class="fas fa-shield-halved" style="color:#dc2626"></i>
+                    <span>Ad Blocker</span>
+                    <label class="toggle">
+                        <input type="checkbox" id="pihole-toggle" onchange="togglePihole(this.checked)">
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
                 </div>
-                <div class="gauge-wrap">
-                    <svg viewBox="0 0 100 60" class="gauge-svg">
-                        <path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/>
-                        <path id="g-ram" d="M10 55 A40 40 0 0 1 90 55" stroke="#2563eb" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/>
-                    </svg>
-                    <div class="gauge-label">RAM</div>
-                    <div class="gauge-val" id="v-ram">0%</div>
-                </div>
-                <div class="gauge-wrap">
-                    <svg viewBox="0 0 100 60" class="gauge-svg">
-                        <path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/>
-                        <path id="g-disk" d="M10 55 A40 40 0 0 1 90 55" stroke="#059669" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/>
-                    </svg>
-                    <div class="gauge-label">Disk</div>
-                    <div class="gauge-val" id="v-disk">0%</div>
-                </div>
-                <div class="gauge-wrap">
-                    <svg viewBox="0 0 100 60" class="gauge-svg">
-                        <path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/>
-                        <path id="g-temp" d="M10 55 A40 40 0 0 1 90 55" stroke="#dc2626" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/>
-                    </svg>
-                    <div class="gauge-label">Temp</div>
-                    <div class="gauge-val" id="v-temp">—</div>
-                </div>
-            </div>
-            <div class="sys-details">
-                <div class="sys-row"><span>Memory</span><span id="v-ram-detail">—</span></div>
-                <div class="sys-row"><span>Disk</span><span id="v-disk-detail">—</span></div>
-                <div class="sys-row"><span>CPU freq</span><span id="v-freq">—</span></div>
-            </div>
-        </div>
-
-        <!-- Pi-hole -->
-        <div class="card card-pihole">
-            <div class="card-header">
-                <i class="fas fa-shield-halved"></i>
-                <span>Ad Blocker</span>
-                <label class="toggle" title="Toggle Pi-hole">
-                    <input type="checkbox" id="pihole-toggle" onchange="togglePihole(this.checked)">
-                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                </label>
-            </div>
-            <div id="pihole-content">
-                <div class="loading"><i class="fas fa-spinner fa-spin"></i></div>
+                <div id="pihole-content"><div class="loading"><i class="fas fa-spinner fa-spin"></i></div></div>
             </div>
         </div>
 
         <!-- Quick Links -->
-        <div class="card card-links">
-            <div class="card-header">
-                <i class="fas fa-grid-2"></i>
-                <span>Quick Links</span>
-            </div>
+        <div class="card mt" style="margin-top:1.25rem">
+            <div class="card-header"><i class="fas fa-grid-2" style="color:#2563eb"></i><span>Quick Links</span></div>
             <div class="links-grid">
-                <a href="http://pi.hole/admin" target="_blank" class="link-tile">
-                    <i class="fas fa-shield-halved"></i><span>Pi-hole</span>
-                </a>
-                <a href="https://open.spotify.com" target="_blank" class="link-tile">
-                    <i class="fab fa-spotify"></i><span>Spotify</span>
-                </a>
-                <a href="https://www.youtube.com" target="_blank" class="link-tile">
-                    <i class="fab fa-youtube"></i><span>YouTube</span>
-                </a>
-                <a href="https://github.com" target="_blank" class="link-tile">
-                    <i class="fab fa-github"></i><span>GitHub</span>
-                </a>
-                <a href="https://www.reddit.com" target="_blank" class="link-tile">
-                    <i class="fab fa-reddit-alien"></i><span>Reddit</span>
-                </a>
-                <a href="https://news.ycombinator.com" target="_blank" class="link-tile">
-                    <i class="fab fa-y-combinator"></i><span>HN</span>
-                </a>
-                <a href="https://www.twitch.tv" target="_blank" class="link-tile">
-                    <i class="fab fa-twitch"></i><span>Twitch</span>
-                </a>
-                <a href="https://discord.com/app" target="_blank" class="link-tile">
-                    <i class="fab fa-discord"></i><span>Discord</span>
-                </a>
-                <a href="https://calendar.google.com" target="_blank" class="link-tile">
-                    <i class="fas fa-calendar-days"></i><span>Calendar</span>
-                </a>
+                <a href="http://pi.hole/admin" target="_blank" class="link-tile"><i class="fas fa-shield-halved"></i><span>Pi-hole</span></a>
+                <a href="https://open.spotify.com" target="_blank" class="link-tile"><i class="fab fa-spotify"></i><span>Spotify</span></a>
+                <a href="https://www.youtube.com" target="_blank" class="link-tile"><i class="fab fa-youtube"></i><span>YouTube</span></a>
+                <a href="https://github.com" target="_blank" class="link-tile"><i class="fab fa-github"></i><span>GitHub</span></a>
+                <a href="https://www.reddit.com" target="_blank" class="link-tile"><i class="fab fa-reddit-alien"></i><span>Reddit</span></a>
+                <a href="https://news.ycombinator.com" target="_blank" class="link-tile"><i class="fab fa-y-combinator"></i><span>HN</span></a>
+                <a href="https://discord.com/app" target="_blank" class="link-tile"><i class="fab fa-discord"></i><span>Discord</span></a>
+                <a href="https://www.twitch.tv" target="_blank" class="link-tile"><i class="fab fa-twitch"></i><span>Twitch</span></a>
+                <a href="https://calendar.google.com" target="_blank" class="link-tile"><i class="fas fa-calendar-days"></i><span>Calendar</span></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══ PAGE: Media ════════════════════════════════════════════════════ -->
+    <section class="page" id="page-media">
+        <div class="grid grid-media">
+            <!-- Spotify -->
+            <div class="card card-spotify">
+                <div class="card-header">
+                    <i class="fab fa-spotify" style="color:#1DB954;font-size:1.3rem"></i>
+                    <span>Spotify</span>
+                    <div class="spotify-device-label" id="spotify-device"></div>
+                </div>
+                <div class="spotify-auth" id="spotify-auth">
+                    <div style="font-size:4rem;color:#1DB954"><i class="fab fa-spotify"></i></div>
+                    <p style="color:var(--muted);font-size:.88rem;text-align:center;max-width:200px">Control your Spotify playback from anywhere on your network</p>
+                    {% if spotify_client_id %}
+                    <a href="/api/spotify/auth" class="btn btn-spotify"><i class="fab fa-spotify"></i> Connect Spotify</a>
+                    {% else %}
+                    <p style="font-size:.8rem;color:var(--subtle);text-align:center">Add <code>SPOTIFY_CLIENT_ID</code> to .env</p>
+                    {% endif %}
+                    <p style="font-size:.75rem;color:var(--subtle)">Requires Spotify Premium</p>
+                </div>
+                <div class="spotify-player" id="spotify-player" style="display:none">
+                    <div class="album-art-wrap">
+                        <img id="album-art" class="album-art" src="" alt="">
+                        <div id="album-placeholder" class="album-placeholder"><i class="fas fa-music"></i></div>
+                    </div>
+                    <div class="track-info">
+                        <div class="track-name" id="track-name">Not Playing</div>
+                        <div class="track-artist" id="track-artist">—</div>
+                        <div class="track-album" id="track-album">—</div>
+                    </div>
+                    <div class="progress-row">
+                        <span id="prog-current">0:00</span>
+                        <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+                        <span id="prog-total">0:00</span>
+                    </div>
+                    <div class="controls">
+                        <button class="ctrl-btn" id="btn-shuffle" onclick="spotifyAction('shuffle')"><i class="fas fa-shuffle"></i></button>
+                        <button class="ctrl-btn" onclick="spotifyAction('previous')"><i class="fas fa-backward-step"></i></button>
+                        <button class="ctrl-btn play-btn" id="btn-play" onclick="spotifyAction('playpause')"><i class="fas fa-play" id="play-icon"></i></button>
+                        <button class="ctrl-btn" onclick="spotifyAction('next')"><i class="fas fa-forward-step"></i></button>
+                        <button class="ctrl-btn" id="btn-repeat" onclick="spotifyAction('repeat')"><i class="fas fa-repeat"></i></button>
+                    </div>
+                    <div class="volume-row">
+                        <i class="fas fa-volume-low"></i>
+                        <input type="range" id="vol-slider" class="vol-slider" min="0" max="100" value="50" oninput="setVolume(this.value)">
+                        <i class="fas fa-volume-high"></i>
+                        <span class="vol-value" id="vol-value">50%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right column: Plex + Jellyfin + network stats -->
+            <div class="media-side">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-film" style="color:#e5a00d"></i><span>Plex</span></div>
+                    {% if plex_url %}
+                    <div class="media-link-card">
+                        <div class="media-link-icon plex"><i class="fas fa-play-circle"></i></div>
+                        <div>
+                            <div style="font-weight:600">Plex Media Server</div>
+                            <div style="font-size:.8rem;color:var(--muted)">Self-hosted streaming</div>
+                        </div>
+                        <a href="{{ plex_url }}" target="_blank" class="btn btn-sm">Open</a>
+                    </div>
+                    {% else %}
+                    <div class="setup-hint">
+                        <i class="fas fa-circle-info"></i>
+                        <div>
+                            <strong>Not configured</strong>
+                            <p>Install <a href="https://www.plex.tv" target="_blank">Plex</a> and set <code>PLEX_URL</code> in .env</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-server" style="color:#aa5cc3"></i><span>Jellyfin</span></div>
+                    {% if jellyfin_url %}
+                    <div class="media-link-card">
+                        <div class="media-link-icon jellyfin"><i class="fas fa-play-circle"></i></div>
+                        <div>
+                            <div style="font-weight:600">Jellyfin Server</div>
+                            <div style="font-size:.8rem;color:var(--muted)">Free & open source</div>
+                        </div>
+                        <a href="{{ jellyfin_url }}" target="_blank" class="btn btn-sm">Open</a>
+                    </div>
+                    {% else %}
+                    <div class="setup-hint">
+                        <i class="fas fa-circle-info"></i>
+                        <div>
+                            <strong>Not configured</strong>
+                            <p>Install <a href="https://jellyfin.org" target="_blank">Jellyfin</a> and set <code>JELLYFIN_URL</code> in .env</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-network-wired" style="color:#059669"></i><span>Network I/O</span></div>
+                    <div class="net-items">
+                        <div class="net-item"><div class="net-icon upload"><i class="fas fa-arrow-up"></i></div><div><div class="net-label">Upload</div><div class="net-val" id="net-up">—</div></div></div>
+                        <div class="net-item"><div class="net-icon download"><i class="fas fa-arrow-down"></i></div><div><div class="net-label">Download</div><div class="net-val" id="net-down">—</div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══ PAGE: Smart Home ═══════════════════════════════════════════════ -->
+    <section class="page" id="page-smarthome">
+        <!-- Home Assistant -->
+        <div class="card mb">
+            <div class="card-header"><i class="fas fa-house-chimney" style="color:#18bcf2"></i><span>Home Assistant</span></div>
+            <div class="ha-row">
+                <div class="ha-logo"><i class="fas fa-house-chimney"></i></div>
+                <div>
+                    <div style="font-weight:600">Home Assistant</div>
+                    <div style="font-size:.82rem;color:var(--muted)">Central hub for all your smart home automations</div>
+                </div>
+                <a href="{{ home_assistant_url }}" target="_blank" class="btn btn-ha">Open HA</a>
             </div>
         </div>
 
-        <!-- Network -->
-        <div class="card card-network">
+        <div class="grid grid-2">
+            <!-- Hue Lights -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-lightbulb" style="color:#d97706"></i>
+                    <span>Philips Hue Lights</span>
+                    <button class="hdr-btn" onclick="fetchHue()" title="Refresh"><i class="fas fa-rotate"></i></button>
+                </div>
+                <div id="hue-content">
+                    {% if hue_configured %}
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Loading lights…</span></div>
+                    {% else %}
+                    <div class="setup-hint">
+                        <i class="fas fa-lightbulb"></i>
+                        <div>
+                            <strong>Hue not configured</strong>
+                            <p>1. Find bridge IP at <a href="https://discovery.meethue.com" target="_blank">discovery.meethue.com</a></p>
+                            <p>2. Add <code>HUE_BRIDGE_IP=&lt;ip&gt;</code> to .env</p>
+                            <p>3. Press the button on your bridge, then click Register below</p>
+                            {% if hue_bridge_ip %}
+                            <button class="btn btn-sm mt-sm" onclick="registerHue()"><i class="fas fa-link"></i> Register Bridge</button>
+                            <div id="hue-reg-result" style="margin-top:.5rem;font-size:.8rem"></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Kasa Plugs -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-plug" style="color:#2563eb"></i>
+                    <span>Kasa Smart Plugs</span>
+                    <button class="hdr-btn" onclick="fetchPlugs()" title="Scan network"><i class="fas fa-rotate"></i></button>
+                </div>
+                <div id="plugs-content">
+                    {% if kasa_available %}
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Scanning network…</span></div>
+                    {% else %}
+                    <div class="setup-hint">
+                        <i class="fas fa-plug"></i>
+                        <div>
+                            <strong>python-kasa not installed</strong>
+                            <p>Run: <code>pip install python-kasa</code> then restart the app</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══ PAGE: Network ══════════════════════════════════════════════════ -->
+    <section class="page" id="page-network">
+        <!-- Uptime monitors -->
+        <div class="card mb">
             <div class="card-header">
-                <i class="fas fa-network-wired"></i>
-                <span>Network</span>
+                <i class="fas fa-heart-pulse" style="color:#dc2626"></i>
+                <span>Uptime Monitor</span>
+                <button class="hdr-btn" onclick="fetchUptime()"><i class="fas fa-rotate"></i></button>
             </div>
-            <div class="net-items">
-                <div class="net-item">
-                    <div class="net-icon upload"><i class="fas fa-arrow-up"></i></div>
-                    <div>
-                        <div class="net-label">Upload</div>
-                        <div class="net-val" id="net-up">—</div>
-                    </div>
+            <div id="uptime-content"><div class="loading"><i class="fas fa-spinner fa-spin"></i></div></div>
+            <form class="add-row" onsubmit="addUptimeHost(event)">
+                <input type="text" id="uptime-name" placeholder="Name (e.g. Router)" required>
+                <input type="text" id="uptime-host" placeholder="IP or hostname" required>
+                <button type="submit" class="btn btn-sm"><i class="fas fa-plus"></i> Add</button>
+            </form>
+        </div>
+
+        <!-- Device map -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-diagram-project" style="color:#2563eb"></i>
+                <span>Network Devices</span>
+                <button class="hdr-btn" onclick="fetchDevices()"><i class="fas fa-rotate"></i></button>
+            </div>
+            <div id="devices-content"><div class="loading"><i class="fas fa-spinner fa-spin"></i></div></div>
+        </div>
+    </section>
+
+    <!-- ══ PAGE: Planner ══════════════════════════════════════════════════ -->
+    <section class="page" id="page-planner">
+        <div class="grid grid-planner">
+            <!-- Calendar -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-calendar-days" style="color:#0d9488"></i>
+                    <span>Upcoming Events</span>
                 </div>
-                <div class="net-item">
-                    <div class="net-icon download"><i class="fas fa-arrow-down"></i></div>
-                    <div>
-                        <div class="net-label">Download</div>
-                        <div class="net-val" id="net-down">—</div>
-                    </div>
+                <div id="calendar-content">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i></div>
                 </div>
-                <div class="net-item">
-                    <div class="net-icon total"><i class="fas fa-database"></i></div>
-                    <div>
-                        <div class="net-label">Total sent</div>
-                        <div class="net-val" id="net-total">—</div>
-                    </div>
+            </div>
+
+            <!-- Lists -->
+            <div class="lists-col">
+                <!-- Todo -->
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-check-square" style="color:#7c3aed"></i><span>To-Do</span></div>
+                    <div id="todo-list" class="list-items"></div>
+                    <form class="add-row" onsubmit="addListItem('todo', event)">
+                        <input type="text" id="todo-input" placeholder="Add task…">
+                        <button type="submit" class="btn btn-sm"><i class="fas fa-plus"></i></button>
+                    </form>
+                </div>
+
+                <!-- Grocery -->
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-basket-shopping" style="color:#059669"></i><span>Groceries</span></div>
+                    <div id="grocery-list" class="list-items"></div>
+                    <form class="add-row" onsubmit="addListItem('grocery', event)">
+                        <input type="text" id="grocery-input" placeholder="Add item…">
+                        <button type="submit" class="btn btn-sm"><i class="fas fa-plus"></i></button>
+                    </form>
                 </div>
             </div>
         </div>
+    </section>
 
-    </main>
+    <!-- ══ PAGE: Gear Guide ════════════════════════════════════════════════ -->
+    <section class="page" id="page-gear">
+        <p class="gear-intro">Everything you need to run this dashboard at full power. All prices are estimates.</p>
+        <div class="gear-grid">
 
-    <div class="toasts" id="toasts"></div>
+            <div class="gear-card">
+                <div class="gear-icon" style="background:rgba(220,38,38,.12);color:#dc2626"><i class="fas fa-raspberry-pi"></i></div>
+                <div class="gear-body">
+                    <div class="gear-name">Raspberry Pi 5 <span class="gear-price">~$60–80</span></div>
+                    <p>The brain of the whole setup. The Pi 5 is fast enough to run Home Assistant, Plex, Pi-hole, and this dashboard simultaneously.</p>
+                    <div class="gear-tags"><span>Required</span></div>
+                    <div class="gear-links">
+                        <a href="https://www.raspberrypi.com/products/raspberry-pi-5/" target="_blank" class="gear-link official">Official Store</a>
+                        <a href="https://www.amazon.com/s?k=raspberry+pi+5+4gb" target="_blank" class="gear-link amazon">Amazon</a>
+                    </div>
+                </div>
+            </div>
 
-    <script>
-        const SPOTIFY_CLIENT_ID = {{ spotify_client_id | tojson }};
-        const SPOTIFY_REDIRECT_URI = {{ spotify_redirect_uri | tojson }};
-    </script>
-    <script src="/static/js/app.js"></script>
+            <div class="gear-card">
+                <div class="gear-icon" style="background:rgba(37,99,235,.12);color:#2563eb"><i class="fas fa-hard-drive"></i></div>
+                <div class="gear-body">
+                    <div class="gear-name">USB SSD (128GB+) <span class="gear-price">~$20–30</span></div>
+                    <p>Run the OS off a USB SSD instead of a microSD card. Way more reliable for 24/7 use — microSD cards wear out fast.</p>
+                    <div class="gear-tags"><span>Strongly recommended</span></div>
+                    <div class="gear-links">
+                        <a href="https://www.amazon.com/s?k=usb+ssd+128gb+samsung" target="_blank" class="gear-link amazon">Amazon</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gear-card">
+                <div class="gear-icon" style="background:rgba(5,150,105,.12);color:#059669"><i class="fas fa-database"></i></div>
+                <div class="gear-body">
+                    <div class="gear-name">2TB External HDD <span class="gear-price">~$55–70</span></div>
+                    <p>Store your movies, TV shows, and music for Plex or Jellyfin. A 2TB WD Elements drive is the go-to choice — cheap and reliable.</p>
+                    <div class="gear-tags"><span>For Plex/Jellyfin</span></div>
+                    <div class="gear-links">
+                        <a href="https://www.amazon.com/s?k=wd+elements+2tb+portable+hard+drive" target="_blank" class="gear-link amazon">Amazon</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gear-card">
+                <div class="gear-icon" style="background:rgba(217,119,6,.12);color:#d97706"><i class="fas fa-lightbulb"></i></div>
+                <div class="gear-body">
+                    <div class="gear-name">Philips Hue Starter Kit <span class="gear-price">~$80–100</span></div>
+                    <p>Includes the Hue Bridge (required for local API) + 2 color bulbs. Best smart light ecosystem — full local control, no cloud needed after setup.</p>
+                    <div class="gear-tags"><span>Smart Lights</span><span>Works out of the box</span></div>
+                    <div class="gear-links">
+                        <a href="https://www.philips-hue.com" target="_blank" class="gear-link official">Philips Hue</a>
+                        <a href="https://www.amazon.com/s?k=philips+hue+starter+kit+color" target="_blank" class="gear-link amazon">Amazon</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gear-card">
+                <div class="gear-icon" style="background:rgba(124,58,237,.12);color:#7c3aed"><i class="fas fa-strip-line"></i></div>
+                <div class="gear-body">
+                    <div class="gear-name">Govee LED Strip Lights <span class="gear-price">~$20–40</span></div>
+                    <p>Great budget option for accent lighting behind your TV or desk. WiFi-based, no hub needed. Govee's local API works with Home Assistant.</p>
+                    <div class="gear-tags"><span>Accent Lighting</span><span>Budget pick</span></div>
+                    <div class="gear-links">
+                        <a href="https://www.govee.com" target="_blank" class="gear-link official">Govee</a>
+                        <a href="https://www.amazon.com/s?k=govee+smart+led+strip+lights+wifi" target="_blank" class="gear-link amazon">Amazon</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gear-card">
+                <div class="gear-icon" style="background:rgba(37,99,235,.12);color:#2563eb"><i class="fas fa-plug"></i></div>
+                <div class="gear-body">
+                    <div class="gear-name">Kasa Smart Plug EP25 <span class="gear-price">~$15–20</span></div>
+                    <p>Control any lamp or appliance. The EP25 supports energy monitoring so you can see exactly how much power each device uses. Works with python-kasa (no cloud).</p>
+                    <div class="gear-tags"><span>Smart Plugs</span><span>Energy monitoring</span></div>
+                    <div class="gear-links">
+                        <a href="https://www.tp-link.com/us/home-networking/smart-plug/" target="_blank" class="gear-link official">TP-Link</a>
+                        <a href="https://www.amazon.com/s?k=kasa+smart+plug+ep25+energy+monitoring" target="_blank" class="gear-link amazon">Amazon</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gear-card">
+                <div class="gear-icon" style="background:rgba(24,188,242,.12);color:#18bcf2"><i class="fas fa-house-chimney"></i></div>
+                <div class="gear-body">
+                    <div class="gear-name">Home Assistant <span class="gear-price free">Free</span></div>
+                    <p>The most powerful open-source home automation platform. Runs on your Pi. Connects to 3,000+ devices — thermostats, cameras, door locks, sensors, everything.</p>
+                    <div class="gear-tags"><span>Free software</span><span>Runs on Pi</span></div>
+                    <div class="gear-links">
+                        <a href="https://www.home-assistant.io" target="_blank" class="gear-link official">home-assistant.io</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gear-card">
+                <div class="gear-icon" style="background:rgba(220,38,38,.12);color:#dc2626"><i class="fas fa-shield-halved"></i></div>
+                <div class="gear-body">
+                    <div class="gear-name">Pi-hole <span class="gear-price free">Free</span></div>
+                    <p>Network-wide ad blocker. Blocks ads on every device in your apartment — phones, smart TVs, laptops — without installing anything on each one.</p>
+                    <div class="gear-tags"><span>Free software</span><span>Runs on Pi</span></div>
+                    <div class="gear-links">
+                        <a href="https://pi-hole.net" target="_blank" class="gear-link official">pi-hole.net</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gear-card">
+                <div class="gear-icon" style="background:rgba(229,160,13,.12);color:#e5a00d"><i class="fas fa-film"></i></div>
+                <div class="gear-body">
+                    <div class="gear-name">Plex / Jellyfin <span class="gear-price free">Free</span></div>
+                    <p>Turn your external HDD into your own Netflix. Plex has a nicer app; Jellyfin is fully open-source. Both run great on Pi 5.</p>
+                    <div class="gear-tags"><span>Free software</span><span>Needs an HDD</span></div>
+                    <div class="gear-links">
+                        <a href="https://www.plex.tv" target="_blank" class="gear-link official">Plex</a>
+                        <a href="https://jellyfin.org" target="_blank" class="gear-link official">Jellyfin</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="gear-total">
+            <strong>Full setup estimate:</strong> ~$180–230 for Pi + SSD + HDD + Hue + 2 Kasa plugs<br>
+            <span style="color:var(--muted)">Free software (HA, Pi-hole, Jellyfin) adds zero cost</span>
+        </div>
+    </section>
+
+</div><!-- /main -->
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+    const SPOTIFY_CLIENT_ID = {{ spotify_client_id | tojson }};
+    const HUE_CONFIGURED    = {{ hue_configured | tojson }};
+    const KASA_AVAILABLE    = {{ kasa_available | tojson }};
+</script>
+<script src="/static/js/app.js"></script>
 </body>
 </html>
