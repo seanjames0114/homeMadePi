@@ -42,8 +42,6 @@ PIHOLE_HOST           = os.environ.get("PIHOLE_HOST", "http://pi.hole")
 HUE_BRIDGE_IP         = os.environ.get("HUE_BRIDGE_IP", "")
 HUE_USERNAME          = os.environ.get("HUE_USERNAME", "")
 HOME_ASSISTANT_URL    = os.environ.get("HOME_ASSISTANT_URL", "http://homeassistant.local:8123")
-PLEX_URL              = os.environ.get("PLEX_URL", "")
-JELLYFIN_URL          = os.environ.get("JELLYFIN_URL", "")
 ICAL_URL              = os.environ.get("ICAL_URL", "")
 KASA_HOSTS            = [h.strip() for h in os.environ.get("KASA_HOSTS", "").split(",") if h.strip()]
 
@@ -70,8 +68,6 @@ def index():
         spotify_client_id=SPOTIFY_CLIENT_ID,
         spotify_redirect_uri=SPOTIFY_REDIRECT_URI,
         home_assistant_url=HOME_ASSISTANT_URL,
-        plex_url=PLEX_URL,
-        jellyfin_url=JELLYFIN_URL,
         hue_configured=bool(HUE_BRIDGE_IP and HUE_USERNAME),
         hue_bridge_ip=HUE_BRIDGE_IP,
         kasa_available=KASA_AVAILABLE,

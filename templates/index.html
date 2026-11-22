@@ -195,52 +195,8 @@
                 </div>
             </div>
 
-            <!-- Right column: Plex + Jellyfin + network stats -->
+            <!-- Right column: network stats -->
             <div class="media-side">
-                <div class="card">
-                    <div class="card-header"><i class="fas fa-film" style="color:#e5a00d"></i><span>Plex</span></div>
-                    {% if plex_url %}
-                    <div class="media-link-card">
-                        <div class="media-link-icon plex"><i class="fas fa-play-circle"></i></div>
-                        <div>
-                            <div style="font-weight:600">Plex Media Server</div>
-                            <div style="font-size:.8rem;color:var(--muted)">Self-hosted streaming</div>
-                        </div>
-                        <a href="{{ plex_url }}" target="_blank" class="btn btn-sm">Open</a>
-                    </div>
-                    {% else %}
-                    <div class="setup-hint">
-                        <i class="fas fa-circle-info"></i>
-                        <div>
-                            <strong>Not configured</strong>
-                            <p>Install <a href="https://www.plex.tv" target="_blank">Plex</a> and set <code>PLEX_URL</code> in .env</p>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="card">
-                    <div class="card-header"><i class="fas fa-server" style="color:#aa5cc3"></i><span>Jellyfin</span></div>
-                    {% if jellyfin_url %}
-                    <div class="media-link-card">
-                        <div class="media-link-icon jellyfin"><i class="fas fa-play-circle"></i></div>
-                        <div>
-                            <div style="font-weight:600">Jellyfin Server</div>
-                            <div style="font-size:.8rem;color:var(--muted)">Free & open source</div>
-                        </div>
-                        <a href="{{ jellyfin_url }}" target="_blank" class="btn btn-sm">Open</a>
-                    </div>
-                    {% else %}
-                    <div class="setup-hint">
-                        <i class="fas fa-circle-info"></i>
-                        <div>
-                            <strong>Not configured</strong>
-                            <p>Install <a href="https://jellyfin.org" target="_blank">Jellyfin</a> and set <code>JELLYFIN_URL</code> in .env</p>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-
                 <div class="card">
                     <div class="card-header"><i class="fas fa-network-wired" style="color:#059669"></i><span>Network I/O</span></div>
                     <div class="net-items">
@@ -396,7 +352,7 @@
                 <div class="gear-icon" style="background:rgba(220,38,38,.12);color:#dc2626"><i class="fas fa-raspberry-pi"></i></div>
                 <div class="gear-body">
                     <div class="gear-name">Raspberry Pi 5 <span class="gear-price">~$60–80</span></div>
-                    <p>The brain of the whole setup. The Pi 5 is fast enough to run Home Assistant, Plex, Pi-hole, and this dashboard simultaneously.</p>
+                    <p>The brain of the whole setup. The Pi 5 is fast enough to run Home Assistant, Pi-hole, and this dashboard simultaneously.</p>
                     <div class="gear-tags"><span>Required</span></div>
                     <div class="gear-links">
                         <a href="https://www.raspberrypi.com/products/raspberry-pi-5/" target="_blank" class="gear-link official">Official Store</a>
@@ -413,18 +369,6 @@
                     <div class="gear-tags"><span>Strongly recommended</span></div>
                     <div class="gear-links">
                         <a href="https://www.amazon.com/s?k=usb+ssd+128gb+samsung" target="_blank" class="gear-link amazon">Amazon</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="gear-card">
-                <div class="gear-icon" style="background:rgba(5,150,105,.12);color:#059669"><i class="fas fa-database"></i></div>
-                <div class="gear-body">
-                    <div class="gear-name">2TB External HDD <span class="gear-price">~$55–70</span></div>
-                    <p>Store your movies, TV shows, and music for Plex or Jellyfin. A 2TB WD Elements drive is the go-to choice — cheap and reliable.</p>
-                    <div class="gear-tags"><span>For Plex/Jellyfin</span></div>
-                    <div class="gear-links">
-                        <a href="https://www.amazon.com/s?k=wd+elements+2tb+portable+hard+drive" target="_blank" class="gear-link amazon">Amazon</a>
                     </div>
                 </div>
             </div>
@@ -492,24 +436,11 @@
                 </div>
             </div>
 
-            <div class="gear-card">
-                <div class="gear-icon" style="background:rgba(229,160,13,.12);color:#e5a00d"><i class="fas fa-film"></i></div>
-                <div class="gear-body">
-                    <div class="gear-name">Plex / Jellyfin <span class="gear-price free">Free</span></div>
-                    <p>Turn your external HDD into your own Netflix. Plex has a nicer app; Jellyfin is fully open-source. Both run great on Pi 5.</p>
-                    <div class="gear-tags"><span>Free software</span><span>Needs an HDD</span></div>
-                    <div class="gear-links">
-                        <a href="https://www.plex.tv" target="_blank" class="gear-link official">Plex</a>
-                        <a href="https://jellyfin.org" target="_blank" class="gear-link official">Jellyfin</a>
-                    </div>
-                </div>
-            </div>
-
         </div>
 
         <div class="gear-total">
-            <strong>Full setup estimate:</strong> ~$180–230 for Pi + SSD + HDD + Hue + 2 Kasa plugs<br>
-            <span style="color:var(--muted)">Free software (HA, Pi-hole, Jellyfin) adds zero cost</span>
+            <strong>Full setup estimate:</strong> ~$120–160 for Pi + SSD + Hue + 2 Kasa plugs<br>
+            <span style="color:var(--muted)">Free software (HA, Pi-hole) adds zero cost</span>
         </div>
     </section>
 
