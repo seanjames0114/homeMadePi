@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeMade Pi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <i class="fas fa-raspberry-pi"></i>
+            <span>HomeMade Pi</span>
+        </div>
+        <div class="clock-display">
+            <div class="time" id="clock">00:00:00</div>
+            <div class="date" id="date">Loading...</div>
+        </div>
+        <div class="status-indicator">
+            <i class="fas fa-circle"></i>
+            <span>Online</span>
+        </div>
+    </header>
+
+    <main class="dashboard">
+
+        <!-- Spotify -->
+        <div class="card card-spotify">
+            <div class="card-header">
+                <i class="fab fa-spotify"></i>
+                <span>Spotify</span>
+                <div class="spotify-device-label" id="spotify-device"></div>
+            </div>
+
+            <div class="spotify-auth" id="spotify-auth">
+                <div class="auth-icon"><i class="fab fa-spotify"></i></div>
+                <p>Control your Spotify playback</p>
+                {% if spotify_client_id %}
+                <a href="/api/spotify/auth" class="btn btn-spotify">
+                    <i class="fab fa-spotify"></i> Connect Spotify
+                </a>
+                {% else %}
+                <p class="hint">Add <code>SPOTIFY_CLIENT_ID</code> to .env</p>
+                {% endif %}
+                <p class="hint">Requires Spotify Premium</p>
+            </div>
+
+            <div class="spotify-player" id="spotify-player" style="display:none">
+                <div class="album-art-wrap">
+                    <img id="album-art" class="album-art" src="" alt="Album Art">
+                    <div id="album-placeholder" class="album-placeholder"><i class="fas fa-music"></i></div>
+                </div>
+                <div class="track-info">
+                    <div class="track-name" id="track-name">Not Playing</div>
+                    <div class="track-artist" id="track-artist">—</div>
+                    <div class="track-album" id="track-album">—</div>
+                </div>
+                <div class="progress-row">
+                    <span id="prog-current">0:00</span>
+                    <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+                    <span id="prog-total">0:00</span>
+                </div>
+                <div class="controls">
+                    <button class="ctrl-btn" id="btn-shuffle" onclick="spotifyAction('shuffle')" title="Shuffle"><i class="fas fa-shuffle"></i></button>
+                    <button class="ctrl-btn" onclick="spotifyAction('previous')" title="Previous"><i class="fas fa-backward-step"></i></button>
+                    <button class="ctrl-btn play-btn" id="btn-play" onclick="spotifyAction('playpause')" title="Play/Pause"><i class="fas fa-play" id="play-icon"></i></button>
+                    <button class="ctrl-btn" onclick="spotifyAction('next')" title="Next"><i class="fas fa-forward-step"></i></button>
+                    <button class="ctrl-btn" id="btn-repeat" onclick="spotifyAction('repeat')" title="Repeat"><i class="fas fa-repeat"></i></button>
+                </div>
+                <div class="volume-row">
+                    <i class="fas fa-volume-low"></i>
+                    <input type="range" id="vol-slider" class="vol-slider" min="0" max="100" value="50" oninput="setVolume(this.value)">
+                    <i class="fas fa-volume-high"></i>
+                    <span class="vol-value" id="vol-value">50%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weather -->
+        <div class="card card-weather">
+            <div class="card-header">
+                <i class="fas fa-cloud-sun"></i>
+                <span>Weather</span>
+                <button class="hdr-btn" onclick="requestLocation()" title="Refresh location"><i class="fas fa-location-crosshairs"></i></button>
+            </div>
+            <div id="weather-content">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Fetching weather…</span></div>
+            </div>
+        </div>
+
+        <!-- System Stats -->
+        <div class="card card-system">
+            <div class="card-header">
+                <i class="fas fa-microchip"></i>
+                <span>System</span>
+                <span class="badge-pi">Pi</span>
+            </div>
+            <div class="gauges-grid">
+                <div class="gauge-wrap">
+                    <svg viewBox="0 0 100 60" class="gauge-svg">
+                        <path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/>
+                        <path id="g-cpu" d="M10 55 A40 40 0 0 1 90 55" stroke="#7c3aed" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/>
+                    </svg>
+                    <div class="gauge-label">CPU</div>
+                    <div class="gauge-val" id="v-cpu">0%</div>
+                </div>
+                <div class="gauge-wrap">
+                    <svg viewBox="0 0 100 60" class="gauge-svg">
+                        <path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/>
+                        <path id="g-ram" d="M10 55 A40 40 0 0 1 90 55" stroke="#2563eb" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/>
+                    </svg>
+                    <div class="gauge-label">RAM</div>
+                    <div class="gauge-val" id="v-ram">0%</div>
+                </div>
+                <div class="gauge-wrap">
+                    <svg viewBox="0 0 100 60" class="gauge-svg">
+                        <path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/>
+                        <path id="g-disk" d="M10 55 A40 40 0 0 1 90 55" stroke="#059669" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/>
+                    </svg>
+                    <div class="gauge-label">Disk</div>
+                    <div class="gauge-val" id="v-disk">0%</div>
+                </div>
+                <div class="gauge-wrap">
+                    <svg viewBox="0 0 100 60" class="gauge-svg">
+                        <path d="M10 55 A40 40 0 0 1 90 55" stroke="#1e1e2e" stroke-width="8" fill="none"/>
+                        <path id="g-temp" d="M10 55 A40 40 0 0 1 90 55" stroke="#dc2626" stroke-width="8" fill="none" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round"/>
+                    </svg>
+                    <div class="gauge-label">Temp</div>
+                    <div class="gauge-val" id="v-temp">—</div>
+                </div>
+            </div>
+            <div class="sys-details">
+                <div class="sys-row"><span>Memory</span><span id="v-ram-detail">—</span></div>
+                <div class="sys-row"><span>Disk</span><span id="v-disk-detail">—</span></div>
+                <div class="sys-row"><span>CPU freq</span><span id="v-freq">—</span></div>
+            </div>
+        </div>
+
+        <!-- Pi-hole -->
+        <div class="card card-pihole">
+            <div class="card-header">
+                <i class="fas fa-shield-halved"></i>
+                <span>Ad Blocker</span>
+                <label class="toggle" title="Toggle Pi-hole">
+                    <input type="checkbox" id="pihole-toggle" onchange="togglePihole(this.checked)">
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+            </div>
+            <div id="pihole-content">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="card card-links">
+            <div class="card-header">
+                <i class="fas fa-grid-2"></i>
+                <span>Quick Links</span>
+            </div>
+            <div class="links-grid">
+                <a href="http://pi.hole/admin" target="_blank" class="link-tile">
+                    <i class="fas fa-shield-halved"></i><span>Pi-hole</span>
+                </a>
+                <a href="https://open.spotify.com" target="_blank" class="link-tile">
+                    <i class="fab fa-spotify"></i><span>Spotify</span>
+                </a>
+                <a href="https://www.youtube.com" target="_blank" class="link-tile">
+                    <i class="fab fa-youtube"></i><span>YouTube</span>
+                </a>
+                <a href="https://github.com" target="_blank" class="link-tile">
+                    <i class="fab fa-github"></i><span>GitHub</span>
+                </a>
+                <a href="https://www.reddit.com" target="_blank" class="link-tile">
+                    <i class="fab fa-reddit-alien"></i><span>Reddit</span>
+                </a>
+                <a href="https://news.ycombinator.com" target="_blank" class="link-tile">
+                    <i class="fab fa-y-combinator"></i><span>HN</span>
+                </a>
+                <a href="https://www.twitch.tv" target="_blank" class="link-tile">
+                    <i class="fab fa-twitch"></i><span>Twitch</span>
+                </a>
+                <a href="https://discord.com/app" target="_blank" class="link-tile">
+                    <i class="fab fa-discord"></i><span>Discord</span>
+                </a>
+                <a href="https://calendar.google.com" target="_blank" class="link-tile">
+                    <i class="fas fa-calendar-days"></i><span>Calendar</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Network -->
+        <div class="card card-network">
+            <div class="card-header">
+                <i class="fas fa-network-wired"></i>
+                <span>Network</span>
+            </div>
+            <div class="net-items">
+                <div class="net-item">
+                    <div class="net-icon upload"><i class="fas fa-arrow-up"></i></div>
+                    <div>
+                        <div class="net-label">Upload</div>
+                        <div class="net-val" id="net-up">—</div>
+                    </div>
+                </div>
+                <div class="net-item">
+                    <div class="net-icon download"><i class="fas fa-arrow-down"></i></div>
+                    <div>
+                        <div class="net-label">Download</div>
+                        <div class="net-val" id="net-down">—</div>
+                    </div>
+                </div>
+                <div class="net-item">
+                    <div class="net-icon total"><i class="fas fa-database"></i></div>
+                    <div>
+                        <div class="net-label">Total sent</div>
+                        <div class="net-val" id="net-total">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div class="toasts" id="toasts"></div>
+
+    <script>
+        const SPOTIFY_CLIENT_ID = {{ spotify_client_id | tojson }};
+        const SPOTIFY_REDIRECT_URI = {{ spotify_redirect_uri | tojson }};
+    </script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
