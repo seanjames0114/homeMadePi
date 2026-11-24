@@ -28,7 +28,7 @@ setInterval(tickClock, 1000);
 tickClock();
 
 /* ── Sidebar navigation ──────────────────────────────────────────────────────── */
-const PAGE_TITLES = { overview: 'Overview', media: 'Media', smarthome: 'Smart Home', network: 'Network', planner: 'Planner', gear: 'Gear Guide' };
+const PAGE_TITLES = { overview: 'Overview', media: 'Media', smarthome: 'Smart Home', network: 'Network', planner: 'Planner' };
 
 function showPage(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -229,6 +229,31 @@ function setVolume(val) {
     clearTimeout(volTimer);
     volTimer = setTimeout(() => api('/api/spotify/volume?vol=' + val, { method: 'POST' }).catch(() => {}), 400);
 }
+
+/* ── Smart Home tabs ────────────────────────────────────────────────────────── */
+function showShTab(id) {
+    document.querySelectorAll('.sh-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
+    document.querySelectorAll('.sh-panel').forEach(p => p.classList.toggle('active', p.id === 'sh-' + id));
+    if (id === 'devices') { if (HUE_CONFIGURED) fetchHue(); if (KASA_AVAILABLE) fetchPlugs(); }
+}
+
+// Detect when HA iframe is blocked (X-Frame-Options / CSP)
+function initHaIframe() {
+    const iframe = document.getElementById('ha-iframe');
+    const blocked = document.getElementById('ha-blocked');
+    if (!iframe) return;
+    // If the iframe errors (net block / SAMEORIGIN) onerror fires; also try load+contentDocument check
+    iframe.addEventListener('load', () => {
+        try {
+            // Will throw cross-origin if blocked
+            void iframe.contentDocument;
+        } catch {
+            blocked.style.display = 'flex';
+        }
+    });
+    iframe.addEventListener('error', () => { blocked.style.display = 'flex'; });
+}
+initHaIframe();
 
 /* ── Hue Lights ─────────────────────────────────────────────────────────────── */
 async function fetchHue() {

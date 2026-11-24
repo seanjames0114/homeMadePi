@@ -34,9 +34,6 @@
         <a class="nav-link" data-page="planner">
             <i class="fas fa-calendar-days"></i><span>Planner</span>
         </a>
-        <a class="nav-link" data-page="gear">
-            <i class="fas fa-bag-shopping"></i><span>Gear Guide</span>
-        </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -210,67 +207,89 @@
 
     <!-- ══ PAGE: Smart Home ═══════════════════════════════════════════════ -->
     <section class="page" id="page-smarthome">
-        <!-- Home Assistant -->
-        <div class="card mb">
-            <div class="card-header"><i class="fas fa-house-chimney" style="color:#18bcf2"></i><span>Home Assistant</span></div>
-            <div class="ha-row">
-                <div class="ha-logo"><i class="fas fa-house-chimney"></i></div>
-                <div>
-                    <div style="font-weight:600">Home Assistant</div>
-                    <div style="font-size:.82rem;color:var(--muted)">Central hub for all your smart home automations</div>
+        <!-- Tab bar -->
+        <div class="sh-tabs">
+            <button class="sh-tab active" data-tab="ha" onclick="showShTab('ha')">
+                <i class="fas fa-house-chimney"></i> Home Assistant
+            </button>
+            <button class="sh-tab" data-tab="devices" onclick="showShTab('devices')">
+                <i class="fas fa-lightbulb"></i> Lights &amp; Plugs
+            </button>
+        </div>
+
+        <!-- HA iframe tab -->
+        <div class="sh-panel active" id="sh-ha">
+            <div class="ha-iframe-wrap" id="ha-iframe-wrap">
+                <iframe id="ha-iframe" src="{{ home_assistant_url }}" allow="fullscreen" title="Home Assistant"></iframe>
+                <div class="ha-blocked" id="ha-blocked" style="display:none">
+                    <div class="ha-blocked-inner">
+                        <i class="fas fa-lock" style="font-size:2.5rem;color:var(--yellow)"></i>
+                        <h3>Home Assistant blocked the embed</h3>
+                        <p>HA prevents iframes by default. Add this to <code>configuration.yaml</code> then restart HA:</p>
+                        <pre>http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 127.0.0.1
+  cors_allowed_origins:
+    - "*"</pre>
+                        <p style="color:var(--subtle);font-size:.8rem">Or open it directly:</p>
+                        <a href="{{ home_assistant_url }}" target="_blank" class="btn btn-ha"><i class="fas fa-external-link-alt"></i> Open Home Assistant</a>
+                    </div>
                 </div>
-                <a href="{{ home_assistant_url }}" target="_blank" class="btn btn-ha">Open HA</a>
             </div>
         </div>
 
-        <div class="grid grid-2">
-            <!-- Hue Lights -->
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-lightbulb" style="color:#d97706"></i>
-                    <span>Philips Hue Lights</span>
-                    <button class="hdr-btn" onclick="fetchHue()" title="Refresh"><i class="fas fa-rotate"></i></button>
-                </div>
-                <div id="hue-content">
-                    {% if hue_configured %}
-                    <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Loading lights…</span></div>
-                    {% else %}
-                    <div class="setup-hint">
-                        <i class="fas fa-lightbulb"></i>
-                        <div>
-                            <strong>Hue not configured</strong>
-                            <p>1. Find bridge IP at <a href="https://discovery.meethue.com" target="_blank">discovery.meethue.com</a></p>
-                            <p>2. Add <code>HUE_BRIDGE_IP=&lt;ip&gt;</code> to .env</p>
-                            <p>3. Press the button on your bridge, then click Register below</p>
-                            {% if hue_bridge_ip %}
-                            <button class="btn btn-sm mt-sm" onclick="registerHue()"><i class="fas fa-link"></i> Register Bridge</button>
-                            <div id="hue-reg-result" style="margin-top:.5rem;font-size:.8rem"></div>
-                            {% endif %}
-                        </div>
+        <!-- Lights & Plugs tab -->
+        <div class="sh-panel" id="sh-devices">
+            <div class="grid grid-2" style="margin-top:.25rem">
+                <!-- Hue Lights -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-lightbulb" style="color:#d97706"></i>
+                        <span>Philips Hue Lights</span>
+                        <button class="hdr-btn" onclick="fetchHue()" title="Refresh"><i class="fas fa-rotate"></i></button>
                     </div>
-                    {% endif %}
+                    <div id="hue-content">
+                        {% if hue_configured %}
+                        <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Loading lights…</span></div>
+                        {% else %}
+                        <div class="setup-hint">
+                            <i class="fas fa-lightbulb"></i>
+                            <div>
+                                <strong>Hue not configured</strong>
+                                <p>1. Find bridge IP at <a href="https://discovery.meethue.com" target="_blank">discovery.meethue.com</a></p>
+                                <p>2. Add <code>HUE_BRIDGE_IP=&lt;ip&gt;</code> to .env</p>
+                                <p>3. Press bridge button then click Register</p>
+                                {% if hue_bridge_ip %}
+                                <button class="btn btn-sm mt-sm" onclick="registerHue()"><i class="fas fa-link"></i> Register Bridge</button>
+                                <div id="hue-reg-result" style="margin-top:.5rem;font-size:.8rem"></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
 
-            <!-- Kasa Plugs -->
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-plug" style="color:#2563eb"></i>
-                    <span>Kasa Smart Plugs</span>
-                    <button class="hdr-btn" onclick="fetchPlugs()" title="Scan network"><i class="fas fa-rotate"></i></button>
-                </div>
-                <div id="plugs-content">
-                    {% if kasa_available %}
-                    <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Scanning network…</span></div>
-                    {% else %}
-                    <div class="setup-hint">
-                        <i class="fas fa-plug"></i>
-                        <div>
-                            <strong>python-kasa not installed</strong>
-                            <p>Run: <code>pip install python-kasa</code> then restart the app</p>
-                        </div>
+                <!-- Kasa Plugs -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-plug" style="color:#2563eb"></i>
+                        <span>Kasa Smart Plugs</span>
+                        <button class="hdr-btn" onclick="fetchPlugs()" title="Scan network"><i class="fas fa-rotate"></i></button>
                     </div>
-                    {% endif %}
+                    <div id="plugs-content">
+                        {% if kasa_available %}
+                        <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Scanning network…</span></div>
+                        {% else %}
+                        <div class="setup-hint">
+                            <i class="fas fa-plug"></i>
+                            <div>
+                                <strong>python-kasa not installed</strong>
+                                <p>Run: <code>pip install python-kasa</code> then restart the app</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -343,106 +362,6 @@
         </div>
     </section>
 
-    <!-- ══ PAGE: Gear Guide ════════════════════════════════════════════════ -->
-    <section class="page" id="page-gear">
-        <p class="gear-intro">Everything you need to run this dashboard at full power. All prices are estimates.</p>
-        <div class="gear-grid">
-
-            <div class="gear-card">
-                <div class="gear-icon" style="background:rgba(220,38,38,.12);color:#dc2626"><i class="fas fa-raspberry-pi"></i></div>
-                <div class="gear-body">
-                    <div class="gear-name">Raspberry Pi 5 <span class="gear-price">~$60–80</span></div>
-                    <p>The brain of the whole setup. The Pi 5 is fast enough to run Home Assistant, Pi-hole, and this dashboard simultaneously.</p>
-                    <div class="gear-tags"><span>Required</span></div>
-                    <div class="gear-links">
-                        <a href="https://www.raspberrypi.com/products/raspberry-pi-5/" target="_blank" class="gear-link official">Official Store</a>
-                        <a href="https://www.amazon.com/s?k=raspberry+pi+5+4gb" target="_blank" class="gear-link amazon">Amazon</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="gear-card">
-                <div class="gear-icon" style="background:rgba(37,99,235,.12);color:#2563eb"><i class="fas fa-hard-drive"></i></div>
-                <div class="gear-body">
-                    <div class="gear-name">USB SSD (128GB+) <span class="gear-price">~$20–30</span></div>
-                    <p>Run the OS off a USB SSD instead of a microSD card. Way more reliable for 24/7 use — microSD cards wear out fast.</p>
-                    <div class="gear-tags"><span>Strongly recommended</span></div>
-                    <div class="gear-links">
-                        <a href="https://www.amazon.com/s?k=usb+ssd+128gb+samsung" target="_blank" class="gear-link amazon">Amazon</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="gear-card">
-                <div class="gear-icon" style="background:rgba(217,119,6,.12);color:#d97706"><i class="fas fa-lightbulb"></i></div>
-                <div class="gear-body">
-                    <div class="gear-name">Philips Hue Starter Kit <span class="gear-price">~$80–100</span></div>
-                    <p>Includes the Hue Bridge (required for local API) + 2 color bulbs. Best smart light ecosystem — full local control, no cloud needed after setup.</p>
-                    <div class="gear-tags"><span>Smart Lights</span><span>Works out of the box</span></div>
-                    <div class="gear-links">
-                        <a href="https://www.philips-hue.com" target="_blank" class="gear-link official">Philips Hue</a>
-                        <a href="https://www.amazon.com/s?k=philips+hue+starter+kit+color" target="_blank" class="gear-link amazon">Amazon</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="gear-card">
-                <div class="gear-icon" style="background:rgba(124,58,237,.12);color:#7c3aed"><i class="fas fa-strip-line"></i></div>
-                <div class="gear-body">
-                    <div class="gear-name">Govee LED Strip Lights <span class="gear-price">~$20–40</span></div>
-                    <p>Great budget option for accent lighting behind your TV or desk. WiFi-based, no hub needed. Govee's local API works with Home Assistant.</p>
-                    <div class="gear-tags"><span>Accent Lighting</span><span>Budget pick</span></div>
-                    <div class="gear-links">
-                        <a href="https://www.govee.com" target="_blank" class="gear-link official">Govee</a>
-                        <a href="https://www.amazon.com/s?k=govee+smart+led+strip+lights+wifi" target="_blank" class="gear-link amazon">Amazon</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="gear-card">
-                <div class="gear-icon" style="background:rgba(37,99,235,.12);color:#2563eb"><i class="fas fa-plug"></i></div>
-                <div class="gear-body">
-                    <div class="gear-name">Kasa Smart Plug EP25 <span class="gear-price">~$15–20</span></div>
-                    <p>Control any lamp or appliance. The EP25 supports energy monitoring so you can see exactly how much power each device uses. Works with python-kasa (no cloud).</p>
-                    <div class="gear-tags"><span>Smart Plugs</span><span>Energy monitoring</span></div>
-                    <div class="gear-links">
-                        <a href="https://www.tp-link.com/us/home-networking/smart-plug/" target="_blank" class="gear-link official">TP-Link</a>
-                        <a href="https://www.amazon.com/s?k=kasa+smart+plug+ep25+energy+monitoring" target="_blank" class="gear-link amazon">Amazon</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="gear-card">
-                <div class="gear-icon" style="background:rgba(24,188,242,.12);color:#18bcf2"><i class="fas fa-house-chimney"></i></div>
-                <div class="gear-body">
-                    <div class="gear-name">Home Assistant <span class="gear-price free">Free</span></div>
-                    <p>The most powerful open-source home automation platform. Runs on your Pi. Connects to 3,000+ devices — thermostats, cameras, door locks, sensors, everything.</p>
-                    <div class="gear-tags"><span>Free software</span><span>Runs on Pi</span></div>
-                    <div class="gear-links">
-                        <a href="https://www.home-assistant.io" target="_blank" class="gear-link official">home-assistant.io</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="gear-card">
-                <div class="gear-icon" style="background:rgba(220,38,38,.12);color:#dc2626"><i class="fas fa-shield-halved"></i></div>
-                <div class="gear-body">
-                    <div class="gear-name">Pi-hole <span class="gear-price free">Free</span></div>
-                    <p>Network-wide ad blocker. Blocks ads on every device in your apartment — phones, smart TVs, laptops — without installing anything on each one.</p>
-                    <div class="gear-tags"><span>Free software</span><span>Runs on Pi</span></div>
-                    <div class="gear-links">
-                        <a href="https://pi-hole.net" target="_blank" class="gear-link official">pi-hole.net</a>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="gear-total">
-            <strong>Full setup estimate:</strong> ~$120–160 for Pi + SSD + Hue + 2 Kasa plugs<br>
-            <span style="color:var(--muted)">Free software (HA, Pi-hole) adds zero cost</span>
-        </div>
-    </section>
 
 </div><!-- /main -->
 
