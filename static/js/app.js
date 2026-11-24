@@ -38,7 +38,10 @@ function showPage(id) {
     document.getElementById('page-title').textContent = PAGE_TITLES[id] || id;
     location.hash = id;
     if (id === 'media')     { fetchSpotify(); }
-    if (id === 'smarthome') { if (HUE_CONFIGURED) fetchHue(); if (KASA_AVAILABLE) fetchPlugs(); }
+    if (id === 'smarthome') {
+        if (HA_TOKEN_SET) fetchHADevices();
+        else { if (HUE_CONFIGURED) fetchHue(); if (KASA_AVAILABLE) fetchPlugs(); }
+    }
     if (id === 'network')   { fetchDevices(); fetchUptime(); }
     if (id === 'planner')   { fetchCalendar(); fetchList('todo'); fetchList('grocery'); }
 }
@@ -230,30 +233,277 @@ function setVolume(val) {
     volTimer = setTimeout(() => api('/api/spotify/volume?vol=' + val, { method: 'POST' }).catch(() => {}), 400);
 }
 
-/* ── Smart Home tabs ────────────────────────────────────────────────────────── */
-function showShTab(id) {
-    document.querySelectorAll('.sh-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
-    document.querySelectorAll('.sh-panel').forEach(p => p.classList.toggle('active', p.id === 'sh-' + id));
-    if (id === 'devices') { if (HUE_CONFIGURED) fetchHue(); if (KASA_AVAILABLE) fetchPlugs(); }
+/* ── Home Assistant device control ──────────────────────────────────────────── */
+let haStates = [];
+let haFilter = 'all';
+let haDebounceTimers = {};
+
+const DOMAIN_META = {
+    light:        { label: 'Lights',      icon: 'fa-lightbulb',          order: 1 },
+    switch:       { label: 'Switches',    icon: 'fa-toggle-on',          order: 2 },
+    input_boolean:{ label: 'Switches',    icon: 'fa-toggle-on',          order: 2 },
+    climate:      { label: 'Climate',     icon: 'fa-temperature-half',   order: 3 },
+    fan:          { label: 'Fans',        icon: 'fa-fan',                order: 4 },
+    cover:        { label: 'Covers',      icon: 'fa-window-maximize',    order: 5 },
+    media_player: { label: 'Media',       icon: 'fa-music',              order: 6 },
+    lock:         { label: 'Locks',       icon: 'fa-lock',               order: 7 },
+    automation:   { label: 'Automations', icon: 'fa-robot',              order: 8 },
+    scene:        { label: 'Scenes',      icon: 'fa-wand-magic-sparkles',order: 9 },
+    sensor:       { label: 'Sensors',     icon: 'fa-chart-line',         order: 10 },
+    binary_sensor:{ label: 'Sensors',     icon: 'fa-circle-dot',         order: 10 },
+};
+
+const MDI_FA = {
+    'mdi:lightbulb':'fa-lightbulb','mdi:lightbulb-outline':'fa-lightbulb',
+    'mdi:power-plug':'fa-plug','mdi:power-plug-off':'fa-plug',
+    'mdi:thermometer':'fa-temperature-half','mdi:thermostat':'fa-temperature-half',
+    'mdi:fan':'fa-fan','mdi:fan-off':'fa-fan',
+    'mdi:television':'fa-tv','mdi:television-play':'fa-tv',
+    'mdi:music':'fa-music','mdi:speaker':'fa-volume-high',
+    'mdi:robot':'fa-robot','mdi:robot-vacuum':'fa-robot',
+    'mdi:window-shutter':'fa-window-maximize','mdi:blinds':'fa-window-maximize',
+    'mdi:motion-sensor':'fa-person-walking','mdi:run':'fa-person-walking',
+    'mdi:door':'fa-door-open','mdi:door-open':'fa-door-open','mdi:door-closed':'fa-door-closed',
+    'mdi:lock':'fa-lock','mdi:lock-open':'fa-lock-open',
+    'mdi:water':'fa-droplet','mdi:water-percent':'fa-droplet',
+    'mdi:wifi':'fa-wifi','mdi:battery':'fa-battery-full',
+    'mdi:home':'fa-house','mdi:home-assistant':'fa-house-chimney',
+    'mdi:smoke-detector':'fa-fire','mdi:smoke':'fa-fire',
+    'mdi:sun-thermometer':'fa-sun','mdi:weather-sunny':'fa-sun',
+    'mdi:power':'fa-power-off','mdi:toggle-switch':'fa-toggle-on',
+};
+
+function entityIcon(entity) {
+    const mdi = entity.attributes.icon || '';
+    if (mdi && MDI_FA[mdi]) return MDI_FA[mdi];
+    return (DOMAIN_META[entity.entity_id.split('.')[0]] || {}).icon || 'fa-circle';
 }
 
-// Detect when HA iframe is blocked (X-Frame-Options / CSP)
-function initHaIframe() {
-    const iframe = document.getElementById('ha-iframe');
-    const blocked = document.getElementById('ha-blocked');
-    if (!iframe) return;
-    // If the iframe errors (net block / SAMEORIGIN) onerror fires; also try load+contentDocument check
-    iframe.addEventListener('load', () => {
-        try {
-            // Will throw cross-origin if blocked
-            void iframe.contentDocument;
-        } catch {
-            blocked.style.display = 'flex';
-        }
-    });
-    iframe.addEventListener('error', () => { blocked.style.display = 'flex'; });
+function friendlyName(entity) {
+    return entity.attributes.friendly_name || entity.entity_id.split('.')[1].replace(/_/g, ' ');
 }
-initHaIframe();
+
+async function callService(domain, service, data = {}) {
+    try {
+        await api('/api/ha/service', { method: 'POST', body: JSON.stringify({ domain, service, data }) });
+        setTimeout(fetchHADevices, 500);
+    } catch (e) { toast('HA error: ' + e.message, 'error'); }
+}
+
+async function fetchHADevices() {
+    if (!HA_TOKEN_SET) return;
+    const loading = document.getElementById('ha-loading');
+    if (loading) loading.style.display = 'flex';
+    try {
+        const states = await api('/api/ha/states');
+        if (states.error) { renderHAError(states.error); return; }
+        haStates = states;
+        buildDomainChips(states);
+        renderDeviceGrid(states, haFilter);
+    } catch (e) { renderHAError(e.message); }
+    finally { if (loading) loading.style.display = 'none'; }
+}
+
+function renderHAError(msg) {
+    const grid = document.getElementById('device-grid');
+    if (!grid) return;
+    grid.innerHTML = `<div class="card" style="grid-column:1/-1;padding:1.5rem">
+        <div style="display:flex;align-items:center;gap:.75rem;color:var(--red)">
+            <i class="fas fa-circle-exclamation fa-lg"></i>
+            <div>
+                <div style="font-weight:600">Could not reach Home Assistant</div>
+                <div style="font-size:.82rem;color:var(--muted);margin-top:.2rem">${msg}</div>
+                <div style="font-size:.8rem;color:var(--subtle);margin-top:.4rem">Check that HA is running and <code>HOME_ASSISTANT_URL</code> in .env is correct</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function buildDomainChips(states) {
+    const chips = document.getElementById('domain-chips');
+    if (!chips) return;
+    const seen = new Set();
+    states.forEach(s => {
+        const d = s.entity_id.split('.')[0];
+        const meta = DOMAIN_META[d];
+        if (meta) seen.add(d === 'input_boolean' ? 'switch' : d);
+    });
+    const sorted = [...seen].sort((a, b) => (DOMAIN_META[a]?.order||99) - (DOMAIN_META[b]?.order||99));
+    chips.innerHTML = `<button class="domain-chip ${haFilter==='all'?'active':''}" data-domain="all" onclick="filterDomain('all')">All</button>`
+        + sorted.map(d => {
+            const meta = DOMAIN_META[d] || {};
+            return `<button class="domain-chip ${haFilter===d?'active':''}" data-domain="${d}" onclick="filterDomain('${d}')">
+                <i class="fas ${meta.icon}"></i> ${meta.label}
+            </button>`;
+        }).join('');
+}
+
+function filterDomain(domain) {
+    haFilter = domain;
+    document.querySelectorAll('.domain-chip').forEach(c => c.classList.toggle('active', c.dataset.domain === domain));
+    renderDeviceGrid(haStates, domain);
+}
+
+function renderDeviceGrid(states, filter) {
+    const grid = document.getElementById('device-grid');
+    if (!grid) return;
+
+    const visible = states.filter(s => {
+        const d = s.entity_id.split('.')[0];
+        if (filter === 'all') return true;
+        if (filter === 'switch') return d === 'switch' || d === 'input_boolean';
+        if (filter === 'sensor') return d === 'sensor' || d === 'binary_sensor';
+        return d === filter;
+    });
+
+    // Group by domain label
+    const groups = {};
+    visible.forEach(s => {
+        const d = s.entity_id.split('.')[0];
+        const meta = DOMAIN_META[d];
+        if (!meta) return;
+        const label = meta.label;
+        if (!groups[label]) groups[label] = { order: meta.order, entities: [] };
+        groups[label].entities.push(s);
+    });
+
+    if (!Object.keys(groups).length) {
+        grid.innerHTML = `<div style="grid-column:1/-1;color:var(--muted);font-size:.88rem;padding:.5rem 0">No devices found in this category</div>`;
+        return;
+    }
+
+    const sorted = Object.entries(groups).sort((a,b) => a[1].order - b[1].order);
+    grid.innerHTML = sorted.map(([label, group]) => {
+        const icon = Object.values(DOMAIN_META).find(m => m.label === label)?.icon || 'fa-circle';
+        const cards = group.entities.map(e => renderEntityCard(e)).join('');
+        return `<div class="domain-header"><i class="fas ${icon}"></i>${label}</div>${cards}`;
+    }).join('');
+}
+
+function renderEntityCard(e) {
+    const domain = e.entity_id.split('.')[0];
+    const on = e.state === 'on' || e.state === 'playing' || e.state === 'unlocked';
+    const name = friendlyName(e);
+    const icon = entityIcon(e);
+    const safeId = e.entity_id.replace(/\./g, '_');
+
+    if (domain === 'scene') {
+        return `<div class="device-card" data-domain="scene">
+            <div class="dc-header">
+                <div class="dc-icon"><i class="fas ${icon}"></i></div>
+                <div class="dc-info"><div class="dc-name" title="${name}">${name}</div></div>
+            </div>
+            <button class="dc-activate-btn" onclick="callService('scene','turn_on',{entity_id:'${e.entity_id}'})">
+                <i class="fas fa-play"></i> Activate
+            </button>
+        </div>`;
+    }
+
+    if (domain === 'sensor') {
+        const val = e.state === 'unavailable' ? '—' : e.state;
+        const unit = e.attributes.unit_of_measurement || '';
+        return `<div class="device-card sensor-card" data-domain="sensor">
+            <div class="dc-header">
+                <div class="dc-icon"><i class="fas ${icon}"></i></div>
+                <div class="dc-info"><div class="dc-name" title="${name}">${name}</div></div>
+            </div>
+            <div><span class="dc-sensor-val">${val}</span> <span class="dc-sensor-unit">${unit}</span></div>
+        </div>`;
+    }
+
+    if (domain === 'binary_sensor') {
+        const active = e.state === 'on';
+        const deviceClass = e.attributes.device_class || '';
+        const labels = { motion:'Motion',door:'Door',window:'Window',smoke:'Smoke',moisture:'Leak',
+                         presence:'Presence',occupancy:'Occupied',lock:'Lock',plug:'Plug' };
+        const stateLabel = active
+            ? (deviceClass === 'door' ? 'Open' : deviceClass === 'motion' ? 'Detected' : 'Active')
+            : (deviceClass === 'door' ? 'Closed' : deviceClass === 'motion' ? 'Clear' : 'Inactive');
+        return `<div class="device-card sensor-card ${active?'on':''}" data-domain="binary_sensor">
+            <div class="dc-header">
+                <div class="dc-icon ${active?'on':''}"><i class="fas ${icon}"></i></div>
+                <div class="dc-info"><div class="dc-name" title="${name}">${name}</div></div>
+            </div>
+            <div><span class="dc-binary-state ${active?'dc-binary-on':'dc-binary-off'}">${stateLabel}</span></div>
+        </div>`;
+    }
+
+    if (domain === 'climate') {
+        const current = e.attributes.current_temperature;
+        const target  = e.attributes.temperature;
+        const mode    = (e.attributes.hvac_mode || e.state || '').toLowerCase();
+        const modeClass = mode === 'heat' ? 'dc-mode-heat' : mode === 'cool' ? 'dc-mode-cool' : mode === 'auto' || mode === 'heat_cool' ? 'dc-mode-auto' : 'dc-mode-off';
+        return `<div class="device-card on" data-domain="climate" id="dc_${safeId}">
+            <div class="dc-header">
+                <div class="dc-icon on"><i class="fas ${icon}"></i></div>
+                <div class="dc-info"><div class="dc-name" title="${name}">${name}</div></div>
+                <span class="dc-mode-chip ${modeClass}">${mode}</span>
+            </div>
+            <div class="dc-climate-row">
+                <div>
+                    <div style="font-size:.7rem;color:var(--muted)">Current</div>
+                    <div class="dc-temp-current">${current != null ? current + '°' : '—'}</div>
+                </div>
+                <i class="fas fa-arrow-right dc-temp-arrow"></i>
+                <div>
+                    <div style="font-size:.7rem;color:var(--muted)">Target</div>
+                    <div class="dc-temp-target" id="target_${safeId}">${target != null ? target + '°' : '—'}</div>
+                </div>
+                <div class="dc-temp-controls">
+                    <button class="dc-temp-btn" onclick="adjustTemp('${e.entity_id}', ${target||20}, -0.5)"><i class="fas fa-minus"></i></button>
+                    <button class="dc-temp-btn" onclick="adjustTemp('${e.entity_id}', ${target||20}, +0.5)"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // Light, switch, fan, cover, lock, media_player, automation, input_boolean
+    const hasSlider = domain === 'light' && e.attributes.brightness != null;
+    const bri = hasSlider ? Math.round(e.attributes.brightness / 255 * 100) : null;
+
+    return `<div class="device-card ${on?'on':''}" data-domain="${domain}" id="dc_${safeId}">
+        <div class="dc-header">
+            <div class="dc-icon ${on?'on':''}"><i class="fas ${icon}"></i></div>
+            <div class="dc-info">
+                <div class="dc-name" title="${name}">${name}</div>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" ${on?'checked':''} onchange="toggleHA('${e.entity_id}','${domain}',this.checked)">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+        </div>
+        ${hasSlider ? `
+        <div class="dc-slider-row">
+            <i class="fas fa-sun"></i>
+            <input type="range" class="dc-slider" min="1" max="100" value="${bri}"
+                oninput="document.getElementById('bri_${safeId}').textContent=this.value+'%'; debounceBri('${e.entity_id}',this.value)">
+            <span class="dc-pct" id="bri_${safeId}">${bri}%</span>
+        </div>` : ''}
+    </div>`;
+}
+
+function toggleHA(entityId, domain, on) {
+    const svc = on ? 'turn_on' : 'turn_off';
+    callService(domain === 'input_boolean' ? 'input_boolean' : domain, svc, { entity_id: entityId });
+}
+
+function debounceBri(entityId, pct) {
+    clearTimeout(haDebounceTimers[entityId]);
+    haDebounceTimers[entityId] = setTimeout(() => {
+        callService('light', 'turn_on', { entity_id: entityId, brightness_pct: parseInt(pct) });
+    }, 350);
+}
+
+function adjustTemp(entityId, current, delta) {
+    const next = Math.round((parseFloat(current) + delta) * 2) / 2;
+    const safeId = entityId.replace(/\./g, '_');
+    const el = document.getElementById('target_' + safeId);
+    if (el) el.textContent = next + '°';
+    clearTimeout(haDebounceTimers['temp_' + entityId]);
+    haDebounceTimers['temp_' + entityId] = setTimeout(() => {
+        callService('climate', 'set_temperature', { entity_id: entityId, temperature: next });
+    }, 500);
+}
 
 /* ── Hue Lights ─────────────────────────────────────────────────────────────── */
 async function fetchHue() {

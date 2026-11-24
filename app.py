@@ -42,6 +42,7 @@ PIHOLE_HOST           = os.environ.get("PIHOLE_HOST", "http://pi.hole")
 HUE_BRIDGE_IP         = os.environ.get("HUE_BRIDGE_IP", "")
 HUE_USERNAME          = os.environ.get("HUE_USERNAME", "")
 HOME_ASSISTANT_URL    = os.environ.get("HOME_ASSISTANT_URL", "http://homeassistant.local:8123")
+HA_TOKEN              = os.environ.get("HA_TOKEN", "")
 ICAL_URL              = os.environ.get("ICAL_URL", "")
 KASA_HOSTS            = [h.strip() for h in os.environ.get("KASA_HOSTS", "").split(",") if h.strip()]
 
@@ -68,6 +69,7 @@ def index():
         spotify_client_id=SPOTIFY_CLIENT_ID,
         spotify_redirect_uri=SPOTIFY_REDIRECT_URI,
         home_assistant_url=HOME_ASSISTANT_URL,
+        ha_token_set=bool(HA_TOKEN),
         hue_configured=bool(HUE_BRIDGE_IP and HUE_USERNAME),
         hue_bridge_ip=HUE_BRIDGE_IP,
         kasa_available=KASA_AVAILABLE,
@@ -308,6 +310,64 @@ def uptime_hosts():
 def delete_uptime_host(host_id):
     save_json("uptime_hosts", [h for h in load_json("uptime_hosts") if h.get("id") != host_id])
     return jsonify({"success": True})
+
+# ── Home Assistant unified API ────────────────────────────────────────────────
+_HA_SHOW_DOMAINS = {"light", "switch", "climate", "sensor", "binary_sensor",
+                    "fan", "cover", "scene", "automation", "input_boolean",
+                    "media_player", "lock"}
+_HA_HIDE_IDS = {"sun.sun"}
+_HA_HIDE_PREFIXES = ("zone.", "persistent_notification.", "update.", "number.",
+                     "select.", "text.", "button.", "device_tracker.")
+
+def _ha_headers():
+    return {"Authorization": f"Bearer {HA_TOKEN}", "Content-Type": "application/json"}
+
+@app.route("/api/ha/states")
+def ha_states():
+    if not HA_TOKEN:
+        return jsonify({"error": "no_token"})
+    try:
+        r = requests.get(f"{HOME_ASSISTANT_URL}/api/states",
+                         headers=_ha_headers(), timeout=6)
+        all_states = r.json()
+        filtered = []
+        for s in all_states:
+            eid = s.get("entity_id", "")
+            domain = eid.split(".")[0]
+            if domain not in _HA_SHOW_DOMAINS:
+                continue
+            if eid in _HA_HIDE_IDS:
+                continue
+            if any(eid.startswith(p) for p in _HA_HIDE_PREFIXES):
+                continue
+            filtered.append({
+                "entity_id":  eid,
+                "state":      s.get("state"),
+                "attributes": s.get("attributes", {}),
+                "last_changed": s.get("last_changed"),
+            })
+        return jsonify(filtered)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 503
+
+@app.route("/api/ha/service", methods=["POST"])
+def ha_service():
+    if not HA_TOKEN:
+        return jsonify({"error": "no_token"}), 401
+    data = request.json or {}
+    domain  = data.get("domain", "")
+    service = data.get("service", "")
+    payload = data.get("data", {})
+    if not domain or not service:
+        return jsonify({"error": "missing domain or service"}), 400
+    try:
+        r = requests.post(
+            f"{HOME_ASSISTANT_URL}/api/services/{domain}/{service}",
+            headers=_ha_headers(), json=payload, timeout=6,
+        )
+        return jsonify(r.json() if r.content else {"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 503
 
 # ── Hue Lights ────────────────────────────────────────────────────────────────
 @app.route("/api/lights/hue")

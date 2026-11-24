@@ -207,92 +207,88 @@
 
     <!-- ══ PAGE: Smart Home ═══════════════════════════════════════════════ -->
     <section class="page" id="page-smarthome">
-        <!-- Tab bar -->
-        <div class="sh-tabs">
-            <button class="sh-tab active" data-tab="ha" onclick="showShTab('ha')">
-                <i class="fas fa-house-chimney"></i> Home Assistant
-            </button>
-            <button class="sh-tab" data-tab="devices" onclick="showShTab('devices')">
-                <i class="fas fa-lightbulb"></i> Lights &amp; Plugs
+
+        {% if ha_token_set %}
+        <!-- ── HA connected ─────────────────────────────────────────── -->
+        <div class="sh-toolbar">
+            <div class="domain-chips" id="domain-chips">
+                <button class="domain-chip active" data-domain="all">All</button>
+            </div>
+            <button class="hdr-btn sh-refresh" onclick="fetchHADevices()" title="Refresh">
+                <i class="fas fa-rotate"></i>
             </button>
         </div>
+        <div id="ha-loading" class="loading" style="margin:.5rem 0"><i class="fas fa-spinner fa-spin"></i><span>Loading devices…</span></div>
+        <div class="device-grid" id="device-grid"></div>
 
-        <!-- HA iframe tab -->
-        <div class="sh-panel active" id="sh-ha">
-            <div class="ha-iframe-wrap" id="ha-iframe-wrap">
-                <iframe id="ha-iframe" src="{{ home_assistant_url }}" allow="fullscreen" title="Home Assistant"></iframe>
-                <div class="ha-blocked" id="ha-blocked" style="display:none">
-                    <div class="ha-blocked-inner">
-                        <i class="fas fa-lock" style="font-size:2.5rem;color:var(--yellow)"></i>
-                        <h3>Home Assistant blocked the embed</h3>
-                        <p>HA prevents iframes by default. Add this to <code>configuration.yaml</code> then restart HA:</p>
-                        <pre>http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - 127.0.0.1
-  cors_allowed_origins:
-    - "*"</pre>
-                        <p style="color:var(--subtle);font-size:.8rem">Or open it directly:</p>
-                        <a href="{{ home_assistant_url }}" target="_blank" class="btn btn-ha"><i class="fas fa-external-link-alt"></i> Open Home Assistant</a>
-                    </div>
+        {% else %}
+        <!-- ── HA not configured ────────────────────────────────────── -->
+        <div class="ha-setup-card">
+            <div class="ha-setup-icon"><i class="fas fa-house-chimney"></i></div>
+            <h2>Connect Home Assistant</h2>
+            <p>Add a token to your <code>.env</code> file to control every device on your network — Hue lights, Kasa plugs, Govee strips, thermostats, locks, and more — all from here.</p>
+
+            <div class="ha-setup-steps">
+                <div class="ha-step">
+                    <div class="ha-step-num">1</div>
+                    <div>Open Home Assistant → click your <strong>name</strong> in the bottom-left → <strong>Security</strong> tab</div>
+                </div>
+                <div class="ha-step">
+                    <div class="ha-step-num">2</div>
+                    <div>Scroll to <strong>Long-Lived Access Tokens</strong> → <strong>Create Token</strong> → copy it</div>
+                </div>
+                <div class="ha-step">
+                    <div class="ha-step-num">3</div>
+                    <div>Add to <code>.env</code>: <code>HA_TOKEN=your_token_here</code></div>
+                </div>
+                <div class="ha-step">
+                    <div class="ha-step-num">4</div>
+                    <div>Restart the dashboard: <code>python3 app.py</code></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Lights & Plugs tab -->
-        <div class="sh-panel" id="sh-devices">
-            <div class="grid grid-2" style="margin-top:.25rem">
-                <!-- Hue Lights -->
+            <div class="ha-setup-also">
+                <strong>Also works without HA</strong> — direct Hue and Kasa control is still available below.
+            </div>
+
+            <!-- Fallback direct controls -->
+            <div class="grid grid-2" style="margin-top:1.5rem">
                 <div class="card">
                     <div class="card-header">
                         <i class="fas fa-lightbulb" style="color:#d97706"></i>
-                        <span>Philips Hue Lights</span>
-                        <button class="hdr-btn" onclick="fetchHue()" title="Refresh"><i class="fas fa-rotate"></i></button>
+                        <span>Philips Hue (direct)</span>
+                        <button class="hdr-btn" onclick="fetchHue()"><i class="fas fa-rotate"></i></button>
                     </div>
                     <div id="hue-content">
                         {% if hue_configured %}
-                        <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Loading lights…</span></div>
+                        <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Loading…</span></div>
                         {% else %}
-                        <div class="setup-hint">
-                            <i class="fas fa-lightbulb"></i>
-                            <div>
-                                <strong>Hue not configured</strong>
-                                <p>1. Find bridge IP at <a href="https://discovery.meethue.com" target="_blank">discovery.meethue.com</a></p>
-                                <p>2. Add <code>HUE_BRIDGE_IP=&lt;ip&gt;</code> to .env</p>
-                                <p>3. Press bridge button then click Register</p>
-                                {% if hue_bridge_ip %}
-                                <button class="btn btn-sm mt-sm" onclick="registerHue()"><i class="fas fa-link"></i> Register Bridge</button>
-                                <div id="hue-reg-result" style="margin-top:.5rem;font-size:.8rem"></div>
-                                {% endif %}
-                            </div>
-                        </div>
+                        <div class="setup-hint"><i class="fas fa-lightbulb"></i><div>
+                            <strong>Not configured</strong>
+                            <p>Set <code>HUE_BRIDGE_IP</code> and <code>HUE_USERNAME</code> in .env</p>
+                            {% if hue_bridge_ip %}<button class="btn btn-sm mt-sm" onclick="registerHue()"><i class="fas fa-link"></i> Register Bridge</button><div id="hue-reg-result" style="margin-top:.5rem;font-size:.8rem"></div>{% endif %}
+                        </div></div>
                         {% endif %}
                     </div>
                 </div>
-
-                <!-- Kasa Plugs -->
                 <div class="card">
                     <div class="card-header">
                         <i class="fas fa-plug" style="color:#2563eb"></i>
-                        <span>Kasa Smart Plugs</span>
-                        <button class="hdr-btn" onclick="fetchPlugs()" title="Scan network"><i class="fas fa-rotate"></i></button>
+                        <span>Kasa Plugs (direct)</span>
+                        <button class="hdr-btn" onclick="fetchPlugs()"><i class="fas fa-rotate"></i></button>
                     </div>
                     <div id="plugs-content">
                         {% if kasa_available %}
-                        <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Scanning network…</span></div>
+                        <div class="loading"><i class="fas fa-spinner fa-spin"></i><span>Scanning…</span></div>
                         {% else %}
-                        <div class="setup-hint">
-                            <i class="fas fa-plug"></i>
-                            <div>
-                                <strong>python-kasa not installed</strong>
-                                <p>Run: <code>pip install python-kasa</code> then restart the app</p>
-                            </div>
-                        </div>
+                        <div class="setup-hint"><i class="fas fa-plug"></i><div><strong>python-kasa not installed</strong><p>Run <code>pip install python-kasa</code> and restart</p></div></div>
                         {% endif %}
                     </div>
                 </div>
             </div>
         </div>
+        {% endif %}
+
     </section>
 
     <!-- ══ PAGE: Network ══════════════════════════════════════════════════ -->
@@ -371,6 +367,7 @@
     const SPOTIFY_CLIENT_ID = {{ spotify_client_id | tojson }};
     const HUE_CONFIGURED    = {{ hue_configured | tojson }};
     const KASA_AVAILABLE    = {{ kasa_available | tojson }};
+    const HA_TOKEN_SET      = {{ ha_token_set | tojson }};
 </script>
 <script src="/static/js/app.js"></script>
 </body>
